@@ -5,25 +5,41 @@ import isPreview from '../utils/isPreview'
 export const GET = async () => {
 	try {
 		const stories = await storyblokApi.getAll('cdn/stories', {
-			sort_by: 'position:desc', // You can do all sorts of sorting. Learn more here: https://www.storyblok.com/docs/api/content-delivery/v2/stories/examples/sorting-by-story-object-property
+			sort_by: 'position:desc',
 			version: isPreview() ? 'draft' : 'published',
 		})
 
 		// Filters all stories not in folders, such as Home and About
 		const mainStories = stories.filter((story) => !story.parent_id)
 
-		// Filters all stories in folders, such as articles/ or posts/
+		// Group stories by folder
 		const childStories = stories.filter((story) => story.parent_id)
+		const storiesByFolder = childStories.reduce((acc, story) => {
+			const folder = story.full_slug.split('/')[0]
+			if (!acc[folder]) acc[folder] = []
+			acc[folder].push(story)
+			return acc
+		}, {})
 
 		const mainExtract = mainStories.map((story) => extractStoryMeta(story))
-		const childExtract = childStories.map((story) =>
-			extractStoryMeta(story, {
-				folder: story.full_slug
-					.split('/')[0]
-					.replace(/^./, (firstLetter) => firstLetter.toUpperCase()),
-			}),
-		)
-		const body = `# Global Finance Starter
+
+		// Build sections by folder
+		const folderSections = Object.entries(storiesByFolder)
+			.map(([folder, folderStories]) => {
+				const folderName = folder.replace(/^./, (firstLetter) =>
+					firstLetter.toUpperCase()
+				)
+				const stories = folderStories
+					.map((story) => {
+						const meta = extractStoryMeta(story)
+						return `- [${meta.headline}](https://astro-storyblok-finance-starter.netlify.app/${meta.slug})${meta.summary ? `: ${meta.summary}` : ''}`
+					})
+					.join('\n')
+				return `\n## ${folderName}\n\n${stories}`
+			})
+			.join('\n')
+
+    const body = `# Global Finance Starter
 
 > Financial clarity tools for modern businesses
 
@@ -31,18 +47,15 @@ This file contains a list of all pages and resources on this website.
 
 ***
 
+## Main Pages
+
 ${mainExtract
 	.map(
 		(story) =>
-			`- [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${story.slug}): ${story.summary}`,
+			`- [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${story.slug})${story.summary ? `: ${story.summary}` : ''}`,
 	)
 	.join('\n')}
-${childExtract
-	.map(
-		(story) =>
-			`\n## ${story.folder}\n\n- [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${story.slug}): ${story.summary}`,
-	)
-	.join('\n')}
+${folderSections}
 
 ## Optional
 
@@ -54,6 +67,7 @@ ${childExtract
 			},
 		})
 	} catch (error) {
+		console.error('Error generating llms.txt:', error)
 		return new Response(`Failed to generate llms.txt \n\n${error}`, {
 			status: 500,
 		})

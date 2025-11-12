@@ -10,23 +10,25 @@ export const GET = async () => {
 			version: isPreview() ? 'draft' : 'published',
 		})
 
-		const storyExtract = stories.map((story) => {
-			// Check if story has richtext content before converting
-			const richTextContent = story.content?.content
-			const markdownContent = richTextContent
-				? convertedMarkdown(richTextContent)
-				: 'No content available'
+		const storyExtract = stories
+			.map((story) => {
+				const richTextContent = story.content?.content
+				const markdownContent = richTextContent
+					? convertedMarkdown(richTextContent)
+					: ''
 
-			return extractStoryMeta(story, {
-				content: markdownContent,
+				return extractStoryMeta(story, {
+					content: markdownContent,
+				})
 			})
-		})
+			// Filter out stories with no content
+			.filter((story) => story.content && story.content !== 'No content available')
 
-		const body = `# Global Finance Starter
+      const body = `# Global Finance Starter
 
 > Financial clarity tools for modern businesses
 
-This file contains a list of all pages and resources on this website.
+This file contains the full text content of all pages on this website, optimized for AI language models and search systems.
 
 ***
 
@@ -37,14 +39,16 @@ ${storyExtract
 
 ${story.content}
 
-URL: [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${story.slug})
+**URL**: [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${story.slug})
 
-***\n`,
+***
+`,
 	)
 	.join('\n')}
-## Optional
 
-- [Homepage](https://astro-storyblok-finance-starter.netlify.app)
+---
+
+For more information, visit [https://astro-storyblok-finance-starter.netlify.app](https://astro-storyblok-finance-starter.netlify.app)
 `
 		return new Response(body, {
 			headers: {
@@ -53,7 +57,7 @@ URL: [${story.headline}](https://astro-storyblok-finance-starter.netlify.app/${s
 		})
 	} catch (error) {
 		console.error('Error generating llms-full.txt:', error)
-		return new Response(`Failed to generate llms-full.txt \n\n${error.message}\n\n${error.stack}`, {
+		return new Response(`Failed to generate llms-full.txt \n\n${error.message}`, {
 			status: 500,
 		})
 	}
