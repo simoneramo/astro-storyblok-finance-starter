@@ -25,3 +25,12 @@ pnpm-debug.log*
 
 # Local Netlify folder
 .netlify
+
+# Storyblok CLI
+.storyblok/
+
+# Temporary files
+GITHUB_ISSUE.md
+SUPPORT_RESPONSE.md
+migrate-space.cjs
+migrate-space.js
